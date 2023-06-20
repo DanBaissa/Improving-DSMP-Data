@@ -5,7 +5,7 @@ from model import create_model
 
 def main():
     # Load and preprocess the data
-    X_train, X_test, y_train, y_test = preprocess_data("BlackMarble.tif", "DSMP.tif")
+    X_train, X_test, y_train, y_test = preprocess_data("Croped_BM_ETHIOPIA_dec_2013.tif", "2013_12_eth.tif")
 
     # Create the model
     model = create_model()
