@@ -1,16 +1,20 @@
-# This is a sample Python script.
+# main.py
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+from preprocess import preprocess_data
+from model import create_model
 
+def main():
+    # Load and preprocess the data
+    X_train, X_test, y_train, y_test = preprocess_data("BlackMarble.tif", "DSMP.tif")
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+    # Create the model
+    model = create_model()
 
+    # Train the model
+    model.fit(X_train, y_train, epochs=10, batch_size=64, validation_data=(X_test, y_test))
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+    # Evaluate the model
+    model.evaluate(X_test, y_test)
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+if __name__ == "__main__":
+    main()
