@@ -9,6 +9,18 @@ def load_raster_data(file_path):
     with rasterio.open(file_path) as src:
         return src.read(1)
 
+    # Apply a threshold
+    data[data > 3000] = 0
+
+    # Apply a log transform (add a small constant to avoid log(0))
+    data = np.log(data + 1)
+
+
+    # Normalize the data
+    data = data / np.max(data)
+
+    return data
+
 def resample_raster_to_match(source_path, target_path, destination_path):
     # Open the source and target datasets
     with rasterio.open(source_path) as source:
