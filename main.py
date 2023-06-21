@@ -53,18 +53,10 @@ def main():
     DSMP_improved = model.predict(BM_data)[0, :, :, 0]
 
     # Visualize the predicted DSMP raster
-    plt.imshow(DSMP_improved, cmap='gray')
+    plt.imshow(DSMP_improved, cmap='turbo')
+    plt.title('Improved DSMP Dataset Log Scale')
     plt.show()
-
-    # Take the logarithm of the data
-    log_data = np.log1p(DSMP_improved)  # Apply logarithm to avoid taking log of zero or negative values
-
-    # Plot the logarithm of the raster data
-    plt.figure(figsize=(8, 8))
-    plt.imshow(log_data, cmap='gray')
-    plt.colorbar(label='Logarithm')
-    plt.title('Logarithm of Improved DSMP Dataset')
-    plt.show()
+    plt.savefig('Improved.pdf', format='pdf')
 
 
 if __name__ == "__main__":

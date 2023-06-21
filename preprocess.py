@@ -12,12 +12,11 @@ def load_raster_data(file_path):
     # Apply a threshold
     data[data > 1000] = 0
 
-    # Apply a log transform (add a small constant to avoid log(0))
-    data = np.log(data + 1)
-
+    # Take the logarithm of the data
+    data = np.log1p(data)  # Apply logarithm to avoid taking log of zero or negative values
 
     # Normalize the data
-    data = data / np.max(data)
+    data = (data - np.min(data)) / (np.max(data) - np.min(data))
 
     return data
 
