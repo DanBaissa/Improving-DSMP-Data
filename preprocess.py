@@ -66,8 +66,8 @@ def preprocess_data(BM_file, DSMP_file, patch_size=16):
     BM_resampled = BM_resampled[:min_height, :min_width]
 
     # Assume that BM and DSMP now have the same resolution and can be directly used as X and y
-    X = np.expand_dims(BM_resampled, axis=2)  # Add a dimension to fit keras Conv2D input shape
-    y = np.expand_dims(DSMP, axis=2)  # Add a dimension to fit keras Conv2D input shape
+    y = np.expand_dims(BM_resampled, axis=2)  # Add a dimension to fit keras Conv2D input shape
+    X = np.expand_dims(DSMP, axis=2)  # Add a dimension to fit keras Conv2D input shape
 
     # Split the data into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
