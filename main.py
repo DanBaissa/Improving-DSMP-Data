@@ -53,7 +53,7 @@ def main():
     DSMP_improved = model.predict(BM_data)[0, :, :, 0]
 
     # Visualize the predicted DSMP raster
-    plt.imshow(DSMP_improved, cmap='turbo')
+    plt.imshow(DSMP_improved, cmap='gray')
     plt.title('Improved DSMP Dataset Log Scale')
     plt.savefig('Improved.pdf', format='pdf')
     plt.show()
