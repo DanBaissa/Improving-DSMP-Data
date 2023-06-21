@@ -7,6 +7,8 @@ import tensorflow as tf
 from preprocess import preprocess_data, load_raster_data
 from model import create_model
 from tensorflow.python.client import device_lib
+from rasterio.io import MemoryFile
+import rasterio
 
 def main():
     # Check if TensorFlow is using the GPU
@@ -28,6 +30,9 @@ def main():
 
     # Train the model
     model.fit(X_train, y_train, epochs=10, batch_size=64, validation_data=(X_test, y_test))
+
+    # Save the model
+    model.save('trained_model.h5')
 
     # Compute in-sample and out-of-sample mean absolute error
     mae = MeanAbsoluteError()
@@ -51,19 +56,28 @@ def main():
     BM_data = np.expand_dims(BM_data, axis=(0, 3))  # Add dimensions to fit keras Conv2D input shape
     DSMP_improved = model.predict(BM_data)[0, :, :, 0]
 
+    # Obtain the metadata from the first DSMP input file
+    with rasterio.open(DSMP_files[0]) as src:
+        meta = src.meta
+
+    # Update metadata to match the shape and datatype of DSMP_improved
+    meta.update({
+        'dtype': 'float32',
+        'height': DSMP_improved.shape[0],
+        'width': DSMP_improved.shape[1],
+        'count': 1
+    })
+
+    # Create a new raster file with the updated metadata and write DSMP_improved to it
+    with rasterio.open('improved.tif', 'w', **meta) as dest:
+        dest.write(DSMP_improved, 1)
+
     # Visualize the predicted DSMP raster
     plt.imshow(DSMP_improved, cmap='gray')
     plt.title('Improved DSMP Dataset Log Scale')
     plt.savefig('Improved.pdf', format='pdf')
     plt.show()
 
-    # Visualize the log of the predicted DSMP raster
-    plt.figure()
-    plt.imshow(np.log1p(DSMP_improved), cmap='gray')  # Apply logarithm to avoid taking log of zero or negative values
-    plt.title('Log of Improved DSMP Dataset')
-    plt.savefig('Improved_Log.pdf', format='pdf')
-
-    plt.show()
 
 if __name__ == "__main__":
     main()
