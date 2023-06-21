@@ -1,76 +1,64 @@
 # preprocess.py
 
-import rasterio
-from rasterio.enums import Resampling
-from sklearn.model_selection import train_test_split
+from rasterio import open
 import numpy as np
+from sklearn.model_selection import train_test_split
+
 
 def load_raster_data(file_path):
-    with rasterio.open(file_path) as src:
-        return src.read(1)
+    """
+    Load raster data from the given file path.
 
-    # Apply a threshold
-    data[data > 3000] = 0
+    Parameters:
+    file_path (str): The file path of the raster file to load.
 
-    # Apply a log transform (add a small constant to avoid log(0))
-    data = np.log(data + 1)
-
-
-    # Normalize the data
-    data = data / np.max(data)
+    Returns:
+    A numpy array containing the raster data.
+    """
+    with open(file_path) as f:
+        data = f.read(1)
 
     return data
 
-def resample_raster_to_match(source_path, target_path, destination_path):
-    # Open the source and target datasets
-    with rasterio.open(source_path) as source:
-        with rasterio.open(target_path) as target:
-            # Rescale factor is the ratio of target resolution to source resolution
-            scale_x = source.res[0] / target.res[0]
-            scale_y = source.res[1] / target.res[1]
 
-            # The new shape of the dataset (rounding to nearest integer)
-            new_shape = (round(source.height * scale_y), round(source.width * scale_x))
+def preprocess_data(file_paths, labels_file_path):
+    """
+    Load and preprocess the data.
 
-            # The transform for the new (resampled) dataset
-            new_transform = rasterio.Affine.scale(scale_x, scale_y) * source.transform
+    Parameters:
+    file_paths (list of str): List of file paths for the input rasters.
+    labels_file_path (str): File path for the labels raster.
 
-            # The new dataset will be written to 'destination_path'
-            with rasterio.open(destination_path, 'w',
-                               driver=source.driver,
-                               height=new_shape[0],
-                               width=new_shape[1],
-                               count=source.count,
-                               dtype=source.dtypes[0],
-                               crs=source.crs,
-                               transform=new_transform) as dest:
+    Returns:
+    Four numpy arrays: the training inputs, the testing inputs,
+                       the training labels, and the testing labels.
+    """
+    # Load the input rasters
+    inputs = [load_raster_data(file_path) for file_path in file_paths]
 
-                # Resample each band
-                for i in range(1, source.count + 1):
-                    # Read band from source, resample it, and write it to dest
-                    resampled_band = source.read(i, out_shape=new_shape, resampling=Resampling.bilinear)
-                    dest.write(resampled_band, i)
+    # Stack the inputs along the depth dimension
+    X = np.stack(inputs, axis=-1)
 
-def preprocess_data(BM_file, DSMP_file, patch_size=16):
-    # Resample the Black Marble data to match the DSMP data
-    resample_raster_to_match(BM_file, DSMP_file, "BM_resampled.tif")
+    # Load the labels
+    y = load_raster_data(labels_file_path)
 
-    # Load the resampled Black Marble data and the DSMP data
-    DSMP = load_raster_data(DSMP_file)
-    BM_resampled = load_raster_data("BM_resampled.tif")
+    # Apply a threshold
+    X[X > 1000] = 0
+    y[y > 1000] = 0
 
-    # If BM and DSMP are not the same size, trim them to the smallest common size
-    min_height = min(DSMP.shape[0], BM_resampled.shape[0])
-    min_width = min(DSMP.shape[1], BM_resampled.shape[1])
-    DSMP = DSMP[:min_height, :min_width]
-    BM_resampled = BM_resampled[:min_height, :min_width]
+    # Take the logarithm of the data
+    X = np.log1p(X)
+    y = np.log1p(y)
 
-    # Assume that BM and DSMP now have the same resolution and can be directly used as X and y
-    X = np.expand_dims(BM_resampled, axis=2)  # Add a dimension to fit keras Conv2D input shape
-    y = np.expand_dims(DSMP, axis=2)  # Add a dimension to fit keras Conv2D input shape
+    # Normalize the data
+    X = (X - np.min(X)) / (np.max(X) - np.min(X))
+    y = (y - np.min(y)) / (np.max(y) - np.min(y))
+
+    # Reshape the data to fit the model
+    X = np.expand_dims(X, axis=0)
+    y = np.expand_dims(y, axis=0)
 
     # Split the data into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     return X_train, X_test, y_train, y_test
-
