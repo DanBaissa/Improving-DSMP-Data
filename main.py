@@ -55,8 +55,9 @@ def main():
     # Visualize the predicted DSMP raster
     plt.imshow(DSMP_improved, cmap='turbo')
     plt.title('Improved DSMP Dataset Log Scale')
-    plt.show()
     plt.savefig('Improved.pdf', format='pdf')
+    plt.show()
+
 
 
 if __name__ == "__main__":
