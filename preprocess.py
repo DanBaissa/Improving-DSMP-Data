@@ -4,21 +4,20 @@ import rasterio
 from rasterio.enums import Resampling
 from sklearn.model_selection import train_test_split
 import numpy as np
+from skimage.util.shape import view_as_windows
 
 def load_raster_data(file_path):
     with rasterio.open(file_path) as src:
-        return src.read(1)
+        data = src.read(1)
+        # Apply a threshold
+        data[data > 1000] = 0
+        # Normalize the data
+        data = (data - np.min(data)) / (np.max(data) - np.min(data))
+        return data
 
-    # Apply a threshold
-    data[data > 1000] = 0
-
-    # Take the logarithm of the data
-    data = np.log1p(data)  # Apply logarithm to avoid taking log of zero or negative values
-
-    # Normalize the data
-    data = (data - np.min(data)) / (np.max(data) - np.min(data))
-
-    return data
+def load_original_raster_data(file_path):
+    with rasterio.open(file_path) as src:
+        return src
 
 def resample_raster_to_match(source_path, target_path, destination_path):
     # Open the source and target datasets
@@ -50,25 +49,31 @@ def resample_raster_to_match(source_path, target_path, destination_path):
                     resampled_band = source.read(i, out_shape=new_shape, resampling=Resampling.bilinear)
                     dest.write(resampled_band, i)
 
-def preprocess_data(BM_file, DSMP_file, patch_size=16):
-    # Resample the Black Marble data to match the DSMP data
-    resample_raster_to_match(BM_file, DSMP_file, "BM_resampled.tif")
+def preprocess_data(X_files, y_files, patch_size=16):
+    X_data = [load_raster_data(file) for file in X_files]
+    y_data = [load_raster_data(file) for file in y_files]
 
-    # Load the resampled Black Marble data and the DSMP data
-    DSMP = load_raster_data(DSMP_file)
-    BM_resampled = load_raster_data("BM_resampled.tif")
+    # Find the smallest common size among all rasters
+    min_height = min(data.shape[0] for data in X_data + y_data)
+    min_width = min(data.shape[1] for data in X_data + y_data)
 
-    # If BM and DSMP are not the same size, trim them to the smallest common size
-    min_height = min(DSMP.shape[0], BM_resampled.shape[0])
-    min_width = min(DSMP.shape[1], BM_resampled.shape[1])
-    DSMP = DSMP[:min_height, :min_width]
-    BM_resampled = BM_resampled[:min_height, :min_width]
+    # Trim all rasters to the smallest common size
+    X_data = [data[:min_height, :min_width] for data in X_data]
+    y_data = [data[:min_height, :min_width] for data in y_data]
 
-    # Assume that BM and DSMP now have the same resolution and can be directly used as X and y
-    y = np.expand_dims(BM_resampled, axis=2)  # Add a dimension to fit keras Conv2D input shape
-    X = np.expand_dims(DSMP, axis=2)  # Add a dimension to fit keras Conv2D input shape
+    # Stack arrays along new third axis
+    X = np.stack(X_data, axis=2)
+    y = np.stack(y_data, axis=2)
+
+    # Extract patches from the stacked arrays
+    X_patches = view_as_windows(X, (patch_size, patch_size, X.shape[2]))
+    y_patches = view_as_windows(y, (patch_size, patch_size, y.shape[2]))
+
+    # Reshape patches into the format (num_patches, patch_size, patch_size, num_channels)
+    X_patches = X_patches.reshape(-1, patch_size, patch_size, X.shape[2])
+    y_patches = y_patches.reshape(-1, patch_size, patch_size, y.shape[2])
 
     # Split the data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X_patches, y_patches, test_size=0.2, random_state=42)
 
     return X_train, X_test, y_train, y_test
