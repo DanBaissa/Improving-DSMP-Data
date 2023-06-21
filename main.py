@@ -21,7 +21,7 @@ def main():
         print("No GPU devices available.")
 
     # Load and preprocess the data
-    X_train, X_test, y_train, y_test = preprocess_data("Croped_BM_ETHIOPIA_dec_2013.tif", "2013_12_eth.tif")
+    X_train, X_test, y_train, y_test = preprocess_data("2013_12_eth.tif", "Croped_BM_ETHIOPIA_dec_2013.tif")
 
     # Create the model
     model = create_model()
