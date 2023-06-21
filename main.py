@@ -1,13 +1,12 @@
-# main.py
+#main.py
+
 import numpy as np
 import matplotlib.pyplot as plt
 from tensorflow.keras.losses import MeanAbsoluteError
 import tensorflow as tf
-from preprocess import preprocess_data, load_raster_data, load_original_raster_data
+from preprocess import preprocess_data, load_raster_data
 from model import create_model
 from tensorflow.python.client import device_lib
-import rasterio
-from scipy.ndimage import zoom
 
 def main():
     # Check if TensorFlow is using the GPU
@@ -20,20 +19,17 @@ def main():
         print("No GPU devices available.")
 
     # Load and preprocess the data
-    X_train, X_test, y_train, y_test = preprocess_data(["2013_12_eth.tif"], ["Croped_BM_ETHIOPIA_dec_2013.tif"])
+    DSMP_files = ["2013_12_eth.tif", "2013_11_eth.tif", "2013_10_eth.tif"]
+    BM_files = ["Croped_BM_ETHIOPIA_dec_2013.tif", "Croped_BM_ETHIOPIA_dec_2013.tif", "Croped_BM_ETHIOPIA_dec_2013.tif"]
+    X_train, X_test, y_train, y_test = preprocess_data(BM_files, DSMP_files)
 
     # Create the model
     model = create_model()
 
     # Train the model
-    model.fit(X_train, y_train, epochs=2, batch_size=64, validation_data=(X_test, y_test))
-
-    # Save the trained model
-    model.save('DSMP_Improver.h5')
-
+    model.fit(X_train, y_train, epochs=10, batch_size=64, validation_data=(X_test, y_test))
 
     # Compute in-sample and out-of-sample mean absolute error
-    # I should convert to MAPE
     mae = MeanAbsoluteError()
     MAE_insample = mae(y_train, np.squeeze(model.predict(X_train))).numpy()
     MAE_outsample = mae(y_test, np.squeeze(model.predict(X_test))).numpy()
@@ -55,19 +51,18 @@ def main():
     BM_data = np.expand_dims(BM_data, axis=(0, 3))  # Add dimensions to fit keras Conv2D input shape
     DSMP_improved = model.predict(BM_data)[0, :, :, 0]
 
-    # Rescale the improved DSMP image to match the original DSMP size and undo normalization
-    original_DSMP = load_original_raster_data("2013_12_eth.tif")
-    scale_factors = (original_DSMP.shape[0] / DSMP_improved.shape[0], original_DSMP.shape[1] / DSMP_improved.shape[1])
-    DSMP_improved_rescaled = zoom(DSMP_improved, scale_factors) * (np.max(original_DSMP) - np.min(original_DSMP)) + np.min(original_DSMP)
-
-    # Save the improved DSMP raster
-    with rasterio.open('Improved.tif', 'w', **original_DSMP.profile) as dst:
-        dst.write(DSMP_improved_rescaled.astype(rasterio.float32), 1)
-
     # Visualize the predicted DSMP raster
-    plt.imshow(np.log1p(DSMP_improved_rescaled), cmap='gray')  # Apply logarithm before visualization
+    plt.imshow(DSMP_improved, cmap='gray')
     plt.title('Improved DSMP Dataset Log Scale')
     plt.savefig('Improved.pdf', format='pdf')
+    plt.show()
+
+    # Visualize the log of the predicted DSMP raster
+    plt.figure()
+    plt.imshow(np.log1p(DSMP_improved), cmap='gray')  # Apply logarithm to avoid taking log of zero or negative values
+    plt.title('Log of Improved DSMP Dataset')
+    plt.savefig('Improved_Log.pdf', format='pdf')
+
     plt.show()
 
 if __name__ == "__main__":
