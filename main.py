@@ -63,12 +63,6 @@ def main(DSMP_dir, BM_dir, epochs, conv_size, output_location):
     plt.savefig('Improved.pdf', format='pdf')
     plt.show()
 
-    # Save the predicted raster
-    with rasterio.open(os.path.join(DSMP_folder, DSMP_files[0])) as src:
-        meta = src.meta
-    meta.update({'dtype': 'float32'})
-    with rasterio.open(os.path.join(output_folder, 'improved.tif'), 'w', **meta) as dest:
-        dest.write(DSMP_improved, 1)
 
 
 if __name__ == "__main__":
