@@ -17,6 +17,6 @@ def create_model(conv_size):
     model.add(Conv2D(1, (conv_size, conv_size), activation='relu', padding='same'))
 
     # Compile the model with SGD optimizer and momentum
-    model.compile(optimizer=SGD(learning_rate=0.01, momentum=0.9), loss='mean_squared_error')
+    model.compile(optimizer=SGD(learning_rate=0.1, momentum=0.9), loss='mean_squared_error')
 
     return model
