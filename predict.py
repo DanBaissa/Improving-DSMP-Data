@@ -1,54 +1,24 @@
-# predict.py
-
+from tensorflow.keras.models import load_model
 import numpy as np
 import matplotlib.pyplot as plt
-from tensorflow.keras.models import load_model
 from preprocess import load_raster_data
 import rasterio
+import os
 
-
-def predict():
+def predict(DSMP_folder, output_folder, model_path):
     # Load the model
-    model = load_model('trained_model.h5')
+    model = load_model(model_path)
 
-    # Load new DSMP data
-    new_DSMP_file = "2013_12_eth.tif"  # replace with your new DSMP file
-    DSMP_data = load_raster_data(new_DSMP_file)
-    DSMP_data_reshaped = np.expand_dims(np.expand_dims(DSMP_data, axis=0), axis=3)  # Add dimensions to fit keras Conv2D input shape
+    # Load and preprocess the data
+    DSMP_files = [os.path.join(DSMP_folder, filename) for filename in os.listdir(DSMP_folder)]
+    for DSMP_file in DSMP_files:
+        DSMP = load_raster_data(DSMP_file)
 
-    # Use the model to make predictions on the new DSMP data
-    DSMP_improved = model.predict(DSMP_data_reshaped)[0, :, :, 0]
+        DSMP = np.expand_dims(DSMP, axis=(0, 3))  # Add dimensions to fit keras Conv2D input shape
+        DSMP_improved = model.predict(DSMP)[0, :, :, 0]
 
-    # Obtain the metadata from the new DSMP data
-    with rasterio.open(new_DSMP_file) as src:
-        meta = src.meta
-
-    # Update metadata to match the shape and datatype of DSMP_improved
-    meta.update({
-        'dtype': 'float32',
-        'height': DSMP_improved.shape[0],
-        'width': DSMP_improved.shape[1],
-        'count': 1
-    })
-
-    # Create a new raster file with the updated metadata and write DSMP_improved to it
-    with rasterio.open('improved_prediction.tif', 'w', **meta) as dest:
-        dest.write(DSMP_improved, 1)
-
-    # Plot the original and improved rasters side by side
-    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
-
-    # Display original raster
-    ax[0].imshow(DSMP_data, cmap='gray')
-    ax[0].set_title('Original DSMP Data')
-
-    # Display improved raster
-    ax[1].imshow(DSMP_improved, cmap='gray')
-    ax[1].set_title('Improved DSMP Prediction')
-
-    plt.savefig('Comparison.pdf', format='pdf')
-    plt.show()
-
-
-if __name__ == "__main__":
-    predict()
+        # Save the improved raster
+        with rasterio.open(DSMP_file) as src:
+            meta = src.meta
+        with rasterio.open(os.path.join(output_folder, 'improved_' + os.path.basename(DSMP_file)), 'w', **meta) as dest:
+            dest.write(DSMP_improved, 1)

@@ -7,10 +7,10 @@ import tensorflow as tf
 from preprocess import preprocess_data, load_raster_data
 from model import create_model
 from tensorflow.python.client import device_lib
-from rasterio.io import MemoryFile
 import rasterio
+import os
 
-def main():
+def main(DSMP_dir, BM_dir, epochs, conv_size, output_location):
     # Check if TensorFlow is using the GPU
     gpus = tf.config.list_physical_devices('GPU')
     if gpus:
@@ -21,18 +21,19 @@ def main():
         print("No GPU devices available.")
 
     # Load and preprocess the data
-    DSMP_files = ["2013_12_eth.tif", "2013_11_eth.tif", "2013_10_eth.tif"]
-    BM_files = ["Croped_BM_ETHIOPIA_dec_2013.tif", "Croped_BM_ETHIOPIA_dec_2013.tif", "Croped_BM_ETHIOPIA_dec_2013.tif"]
+    DSMP_files = [DSMP_dir + '/' + f for f in os.listdir(DSMP_dir) if f.endswith('.tif')]
+    BM_files = [BM_dir + '/' + f for f in os.listdir(BM_dir) if f.endswith('.tif')]
     X_train, X_test, y_train, y_test = preprocess_data(BM_files, DSMP_files)
 
     # Create the model
-    model = create_model()
+    model = create_model(conv_size) # pass conv_size to create_model function
 
     # Train the model
-    model.fit(X_train, y_train, epochs=10, batch_size=64, validation_data=(X_test, y_test))
+    model.fit(X_train, y_train, epochs=epochs, batch_size=64, validation_data=(X_test, y_test))
 
     # Save the model
     model.save('trained_model.h5')
+
 
     # Compute in-sample and out-of-sample mean absolute error
     mae = MeanAbsoluteError()
@@ -56,27 +57,18 @@ def main():
     BM_data = np.expand_dims(BM_data, axis=(0, 3))  # Add dimensions to fit keras Conv2D input shape
     DSMP_improved = model.predict(BM_data)[0, :, :, 0]
 
-    # Obtain the metadata from the first DSMP input file
-    with rasterio.open(DSMP_files[0]) as src:
-        meta = src.meta
-
-    # Update metadata to match the shape and datatype of DSMP_improved
-    meta.update({
-        'dtype': 'float32',
-        'height': DSMP_improved.shape[0],
-        'width': DSMP_improved.shape[1],
-        'count': 1
-    })
-
-    # Create a new raster file with the updated metadata and write DSMP_improved to it
-    with rasterio.open('improved.tif', 'w', **meta) as dest:
-        dest.write(DSMP_improved, 1)
-
     # Visualize the predicted DSMP raster
     plt.imshow(DSMP_improved, cmap='gray')
     plt.title('Improved DSMP Dataset Log Scale')
     plt.savefig('Improved.pdf', format='pdf')
     plt.show()
+
+    # Save the predicted raster
+    with rasterio.open(os.path.join(DSMP_folder, DSMP_files[0])) as src:
+        meta = src.meta
+    meta.update({'dtype': 'float32'})
+    with rasterio.open(os.path.join(output_folder, 'improved.tif'), 'w', **meta) as dest:
+        dest.write(DSMP_improved, 1)
 
 
 if __name__ == "__main__":
