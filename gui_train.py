@@ -1,6 +1,3 @@
-User
-I have code that improves Night lights data via convolutional Neural Networks. I would like help adding an autoencoder model:
-
  # gui_train.py
 
 from tensorflow.keras.models import Sequential
