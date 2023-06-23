@@ -18,6 +18,15 @@ def load_raster_data(file_path):
 
         return data
 
+def load_raster_data_min_max(file_path):
+    with rasterio.open(file_path) as src:
+        data = src.read(1)
+
+        # Apply a threshold
+        data[data > 1000] = 0
+
+        return data
+
 
 def resample_raster_to_match(source_path, target_path, destination_path):
     with rasterio.open(source_path) as source:

@@ -6,7 +6,9 @@ from tensorflow.keras.optimizers import SGD
 
 def create_model(conv_size):
     model = Sequential()
-    model.add(Conv2D(64, (conv_size, conv_size), activation='relu', padding='same', input_shape=(None, None, 1)))
+    model.add(Conv2D(128, (conv_size, conv_size), activation='relu', padding='same', input_shape=(None, None, 1)))
+    model.add(MaxPooling2D((2, 2), padding='same'))
+    model.add(Conv2D(64, (conv_size, conv_size), activation='relu', padding='same'))
     model.add(MaxPooling2D((2, 2), padding='same'))
     model.add(Conv2D(32, (conv_size, conv_size), activation='relu', padding='same'))
     model.add(MaxPooling2D((2, 2), padding='same'))
@@ -14,8 +16,11 @@ def create_model(conv_size):
 
     # here come the decoding layers (upsampling and convolution)
     model.add(UpSampling2D((2, 2)))
+    model.add(Conv2D(32, (conv_size, conv_size), activation='relu', padding='same'))
+    model.add(UpSampling2D((2, 2)))
     model.add(Conv2D(64, (conv_size, conv_size), activation='relu', padding='same'))
     model.add(UpSampling2D((2, 2)))
+    model.add(Conv2D(128, (conv_size, conv_size), activation='relu', padding='same'))
     model.add(Conv2D(1, (conv_size, conv_size), activation='relu', padding='same'))
 
     # Compile the model with SGD optimizer and momentum

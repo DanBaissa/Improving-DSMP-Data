@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tensorflow.keras.losses import MeanAbsoluteError
 import tensorflow as tf
-from preprocess import preprocess_data, load_raster_data
+from preprocess import preprocess_data, load_raster_data, load_raster_data_min_max
 from model import create_model
 from tensorflow.python.client import device_lib
 import os
@@ -15,7 +15,7 @@ def main(DSMP_dir, BM_dir, epochs, conv_size, output_location):
     gpus = tf.config.list_physical_devices('GPU')
     if gpus:
         # TensorFlow can access a GPU
-        print("GPU devices: ", gpus)
+        print("Using GPU devices: ", gpus)
     else:
         # TensorFlow cannot access a GPU
         print("No GPU devices available.")
@@ -34,6 +34,8 @@ def main(DSMP_dir, BM_dir, epochs, conv_size, output_location):
     # Save the model
     model.save('trained_model.h5')
 
+
+
     # Plotting loss function
     plt.figure()
     plt.plot(history.history['loss'])
@@ -48,6 +50,18 @@ def main(DSMP_dir, BM_dir, epochs, conv_size, output_location):
     DSMP_data = load_raster_data(DSMP_files[0])  # Load first DSMP file for comparison
     DSMP_data = np.expand_dims(DSMP_data, axis=(0, 3))  # Add dimensions to fit keras Conv2D input shape
     predicted_data = model.predict(DSMP_data)[0, :, :, 0]
+
+    DSMPbase=load_raster_data_min_max(DSMP_files[0])
+
+    DSMPbase_min = np.min(DSMPbase)
+    DSMPbase_max = np.max(DSMPbase)
+
+    # Normalize the source data to a 0 - 1 scale
+    predicted_data = (predicted_data - np.min(predicted_data)) / (np.max(predicted_data) - np.min(predicted_data))
+
+    # now denormalize the data
+    predicted_data = predicted_data * (DSMPbase_max - DSMPbase_min) + DSMPbase_min
+
 
     fig, axes = plt.subplots(nrows=1, ncols=2)
     axes[0].imshow(DSMP_data[0, :, :, 0], cmap='gray')
